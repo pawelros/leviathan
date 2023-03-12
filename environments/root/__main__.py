@@ -1,10 +1,13 @@
 """An AWS Python Pulumi program"""
 
 import pulumi
-from pulumi_aws import s3
+from leviathan.account import Account
 
-# Create an AWS resource (S3 Bucket)
-bucket = s3.Bucket('my-bucket')
+# create environments
+
+environments = {
+    'dev' : Account('dev')
+}
 
 # Export the name of the bucket
-pulumi.export('bucket_name', bucket.id)
+pulumi.export('environments', environments)
