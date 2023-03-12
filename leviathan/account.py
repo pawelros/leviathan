@@ -1,6 +1,6 @@
 
 import time
-from pulumi import ComponentResource, ResourceOptions
+from pulumi import ComponentResource, ResourceOptions, Output
 import pulumi_aws as aws
 import pulumi_random as random
 from leviathan import consts
@@ -18,18 +18,20 @@ class Account(ComponentResource):
             "random_email_suffix",
             length=8,
             numeric=False,
-            special=False)
+            special=False,
+            # opts=child_opts
+            ).result
 
         self.account = aws.organizations.Account(
             name,
             name=name,
             # aws account email can't be reused. Ever
-            email=f'dev.rosiv+aws-{name}-{random_email_suffix}@gmail.com',
+            email=Output.concat('dev.rosiv+aws-', name, '-', random_email_suffix, '@gmail.com'),
             close_on_deletion=True,
             iam_user_access_to_billing='ALLOW',
             role_name=consts.OrganizationAccountAccessRoleName,
             opts=child_opts)
 
-        self.baseline = AccountBaseline(self.account.id)
+        self.baseline = AccountBaseline(name, self.account.id, opts=child_opts)
 
         self.register_outputs({'account' : self.account})
