@@ -5,7 +5,7 @@ from pulumi_aws import ProviderAssumeRoleArgs
 from leviathan import consts
 
 
-class AccountBaseline(ComponentResource):
+class EnvironmentBaseline(ComponentResource):
     def __init__(self, account_name: str, account_id: int, opts: ResourceOptions) -> None:
         # By calling super(), we ensure any instantiation of this class inherits from the ComponentResource class so we don't have to declare all the same things all over again.
         super().__init__('pkg:leviathan:account_baseline', 'account_baseline', None, opts=opts)
