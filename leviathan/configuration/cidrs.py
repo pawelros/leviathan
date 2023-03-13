@@ -1,0 +1,12 @@
+# The default CIDR block and prefix for all VPCs
+DEFAULT_CIDR_BLOCK = '10.0.0.0/8'
+
+CIDR_PREFIX_NETWORKING = '10.100'
+
+# NEXT STEPS: CIDRs per project
+CIDR_PREFIX_DEV = '10.101'
+CIDR_PREFIX_TEST = '10.102'
+CIDR_PREFIX_PROD = '10.103'
+
+
+EVERYWHERE = '0.0.0.0/0'

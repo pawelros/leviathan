@@ -1,0 +1,6 @@
+config:
+  org: pawelros
+  aws:region: eu-central-1
+  pulumi:template: aws-python
+  pulumi:disable-default-providers:
+    - aws
