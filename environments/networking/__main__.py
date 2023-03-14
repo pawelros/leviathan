@@ -3,6 +3,7 @@ from pulumi import ResourceOptions, Config
 import pulumi_aws as aws
 from pulumi_aws import ProviderAssumeRoleArgs
 from vpc import Vpc
+from leviathan.configuration import cidrs
 
 config = pulumi.Config()
 stack = pulumi.get_stack()
@@ -32,4 +33,4 @@ provider = aws.Provider(
 # All child resources will use the provider
 child_opts = ResourceOptions(providers={"aws": provider})
 
-vpc = Vpc('main', child_opts)
+vpc = Vpc("main", cidrs.CIDR_PREFIX_NETWORKING, child_opts, is_public=True)

@@ -1,18 +1,15 @@
 from pulumi import ComponentResource, ResourceOptions, InvokeOptions
 import pulumi_aws as aws
-
-from leviathan.configuration import cidrs
+import pulumi
 
 
 class Vpc(ComponentResource):
-    def __init__(self, name: str, opts) -> None:
+    def __init__(self, name: str, cidr_prefix: str, opts, is_public: bool = False) -> None:
         # By calling super(), we ensure any instantiation of this class inherits from the ComponentResource class so we don't have to declare all the same things all over again.
         super().__init__(
             "pkg:leviathan:environments:networking:vpc", name, None, opts=opts
         )
         # This definition ensures the new component resource acts like anything else in the Pulumi ecosystem when being called in code.
-
-        cidr_prefix = cidrs.CIDR_PREFIX_NETWORKING
 
         main_vpc = aws.ec2.Vpc(
             name,
@@ -43,27 +40,38 @@ class Vpc(ComponentResource):
                     map_public_ip_on_launch=False,
                     vpc_id=main_vpc.id,
                     tags={
-                        'Name': '{az}-private-subnet',
+                        'Name': f'{az}-private-subnet',
                         'Type': 'private',
                     },
                     opts=opts,
                 )
             )
 
-            public_subnets.append(
-                aws.ec2.Subnet(
-                    f"{az}-public-subnet",
-                    assign_ipv6_address_on_creation=False,
-                    availability_zone=availability_zones[0],
-                    cidr_block=f"{cidr_prefix}.{public_subnet_suffixes.pop()}",
-                    map_public_ip_on_launch=False,
-                    vpc_id=main_vpc.id,
-                    tags={
-                        'Name': '{az}-public-subnet',
-                        'Type': 'public',
-                    },
-                    opts=opts,
+            if is_public:
+                public_subnets.append(
+                    aws.ec2.Subnet(
+                        f"{az}-public-subnet",
+                        assign_ipv6_address_on_creation=False,
+                        availability_zone=az,
+                        cidr_block=f"{cidr_prefix}.{public_subnet_suffixes.pop()}",
+                        map_public_ip_on_launch=False,
+                        vpc_id=main_vpc.id,
+                        tags={
+                            'Name': f'{az}-public-subnet',
+                            'Type': 'public',
+                        },
+                        opts=opts,
+                    )
                 )
-            )
+
+        vpc_data = {
+            'vpc': main_vpc.id,
+            'public_cidrs': [ps.cidr_block for ps in public_subnets],
+            'private_cidrs': [ps.cidr_block for ps in private_subnets],
+            'public_subnets': [ps.id for ps in public_subnets],
+            'private_subnets': [ps.id for ps in private_subnets],
+        }
+
+        pulumi.export('vpc_info', vpc_data)
 
         self.register_outputs({})
