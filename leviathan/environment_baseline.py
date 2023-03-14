@@ -8,7 +8,7 @@ from leviathan import consts
 class EnvironmentBaseline(ComponentResource):
     def __init__(self, account_name: str, account_id: int, opts: ResourceOptions) -> None:
         # By calling super(), we ensure any instantiation of this class inherits from the ComponentResource class so we don't have to declare all the same things all over again.
-        super().__init__('pkg:leviathan:account_baseline', 'account_baseline', None, opts=opts)
+        super().__init__('pkg:leviathan:environment_baseline', 'environment_baseline', None, opts=opts)
         # This definition ensures the new component resource acts like anything else in the Pulumi ecosystem when being called in code.
 
         # Create an AWS provider with assumed OrganizationAccessRole for this specific account

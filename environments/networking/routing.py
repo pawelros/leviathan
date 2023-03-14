@@ -71,7 +71,7 @@ class Routing(ComponentResource):
             ),
         )
 
-        nat_gateway = aws.ec2.NatGateway(
+        self.nat_gateway = aws.ec2.NatGateway(
             "networking-nat-gw",
             allocation_id=eip.id,
             subnet_id=vpc.public_subnets[0],
@@ -91,11 +91,11 @@ class Routing(ComponentResource):
 
         private_route = aws.ec2.Route(
             "networking-private-route",
-            nat_gateway_id=nat_gateway.id,
+            nat_gateway_id=self.nat_gateway.id,
             route_table_id=private_route_table.id,
             destination_cidr_block=cidrs.EVERYWHERE,
             opts=pulumi.ResourceOptions(
-                parent=nat_gateway, providers=child_opts.providers
+                parent=self.nat_gateway, providers=child_opts.providers
             ),
         )
 
@@ -108,3 +108,12 @@ class Routing(ComponentResource):
                     parent=private_route, providers=child_opts.providers
                 ),
             )
+
+        routing_data = {
+            "vpc": vpc.id,
+            "internet_gateway": self.internet_gateway,
+            "nat_gateway": self.nat_gateway,
+            "transit_gateway": '',
+        }
+
+        pulumi.export("routing", routing_data)
