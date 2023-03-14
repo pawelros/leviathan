@@ -2,7 +2,7 @@ import pulumi
 from pulumi import ResourceOptions, Config
 import pulumi_aws as aws
 from pulumi_aws import ProviderAssumeRoleArgs
-from vpc import Vpc
+from leviathan.vpc import Vpc
 from leviathan.configuration import cidrs
 
 config = pulumi.Config()
