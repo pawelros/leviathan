@@ -30,6 +30,8 @@ class Vpc(ComponentResource):
             opts=child_opts,
         )
 
+        self.id = main_vpc.id
+
         child_opts = pulumi.ResourceOptions(parent=main_vpc, providers=opts.providers)
 
         self._add_subnets(main_vpc, cidr_prefix, is_public, child_opts)
