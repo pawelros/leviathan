@@ -15,6 +15,19 @@ class Routing(ComponentResource):
         # This definition ensures the new component resource acts like anything else in the Pulumi ecosystem when being called in code.
         child_opts = pulumi.ResourceOptions(parent=self, providers=opts.providers)
 
+        self._internet_gateway(vpc, child_opts)
+        self._nat_gateway(vpc, child_opts)
+
+        routing_data = {
+            "vpc": vpc.id,
+            "internet_gateway": self.internet_gateway,
+            "nat_gateway": self.nat_gateway,
+            "transit_gateway": '',
+        }
+
+        pulumi.export("routing", routing_data)
+
+    def _internet_gateway(self, vpc: Vpc, child_opts: pulumi.ResourceOptions):
         # Internet gateway
         self.internet_gateway = aws.ec2.InternetGateway(
             "networking-internet-gateway",
@@ -62,6 +75,7 @@ class Routing(ComponentResource):
                 ),
             )
 
+    def _nat_gateway(self, vpc: Vpc, child_opts: pulumi.ResourceOptions):
         # NAT Gateway
         eip = aws.ec2.Eip(
             "networking-nat-eip",
@@ -108,12 +122,3 @@ class Routing(ComponentResource):
                     parent=private_route, providers=child_opts.providers
                 ),
             )
-
-        routing_data = {
-            "vpc": vpc.id,
-            "internet_gateway": self.internet_gateway,
-            "nat_gateway": self.nat_gateway,
-            "transit_gateway": '',
-        }
-
-        pulumi.export("routing", routing_data)
