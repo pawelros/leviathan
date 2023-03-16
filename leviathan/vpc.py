@@ -20,10 +20,14 @@ class Vpc(ComponentResource):
         )
         # This definition ensures the new component resource acts like anything else in the Pulumi ecosystem when being called in code.
         child_opts = pulumi.ResourceOptions(parent=self, providers=opts.providers)
+        self.name = name
+        self.cidr_block = f"{cidr_prefix}.0.0/16"
 
         main_vpc = aws.ec2.Vpc(
             name,
-            cidr_block=f"{cidr_prefix}.0.0/16",
+            cidr_block=self.cidr_block,
+            enable_dns_hostnames=True,
+            enable_dns_support=True,
             tags={
                 "Name": name,
             },
@@ -39,6 +43,7 @@ class Vpc(ComponentResource):
 
         vpc_data = {
             "vpc": main_vpc.id,
+            "cidr_block": self.cidr_block,
             "public_cidrs": [ps.cidr_block for ps in self.public_subnets],
             "private_cidrs": [ps.cidr_block for ps in self.private_subnets],
             "public_subnets": [ps.id for ps in self.public_subnets],

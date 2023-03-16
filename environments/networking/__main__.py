@@ -13,13 +13,11 @@ org = config.require("org")
 # TODO: implement json serializer for each CustomResourceComponent
 # in order to export crucial properties only and allow to
 # easily deserialize entire stack reference into object
-stack_ref = pulumi.StackReference(f"{org}/leviathan/root").get_output(
-    "networking_account"
-)
+stack_root_ref = pulumi.StackReference(f"{org}/leviathan/root")
 
 config = Config("aws")
 region = config.require("region")
-role_to_assume = stack_ref.apply(
+role_to_assume = stack_root_ref.get_output("networking_account").apply(
     lambda v: f"arn:aws:iam::{v['account']['id']}:role/{v['account']['role_name']}"
 )
 
@@ -35,4 +33,4 @@ provider = aws.Provider(
 child_opts = ResourceOptions(providers={"aws": provider})
 
 vpc = Vpc("main", cidrs.CIDR_PREFIX_NETWORKING, child_opts, is_public=True)
-routing = Routing(vpc, child_opts)
+routing = Routing(vpc=vpc, stack_root_ref=stack_root_ref, opts=child_opts)

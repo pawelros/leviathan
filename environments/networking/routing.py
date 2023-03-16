@@ -1,13 +1,12 @@
-from pulumi import ComponentResource, ResourceOptions, InvokeOptions
+from pulumi import ComponentResource
 import pulumi_aws as aws
 import pulumi
-import json
 from leviathan.configuration import cidrs
 from leviathan.vpc import Vpc
 
 
 class Routing(ComponentResource):
-    def __init__(self, vpc: Vpc, opts) -> None:
+    def __init__(self, vpc: Vpc, stack_root_ref: pulumi.StackReference, opts) -> None:
         # By calling super(), we ensure any instantiation of this class inherits from the ComponentResource class so we don't have to declare all the same things all over again.
         super().__init__(
             "pkg:leviathan:environments:networking:routing", "routing", None, opts=opts
@@ -17,12 +16,13 @@ class Routing(ComponentResource):
 
         self._internet_gateway(vpc, child_opts)
         self._nat_gateway(vpc, child_opts)
+        self._transit_gateway(stack_root_ref, child_opts)
 
         routing_data = {
             "vpc": vpc.id,
             "internet_gateway": self.internet_gateway,
             "nat_gateway": self.nat_gateway,
-            "transit_gateway": '',
+            "transit_gateway": self.transit_gateway,
         }
 
         pulumi.export("routing", routing_data)
@@ -33,7 +33,7 @@ class Routing(ComponentResource):
             "networking-internet-gateway",
             vpc_id=vpc.id,
             tags={"Name": "networking-internet-gateway"},
-            opts=child_opts
+            opts=child_opts,
         )
 
         # Route tables
@@ -77,6 +77,7 @@ class Routing(ComponentResource):
 
     def _nat_gateway(self, vpc: Vpc, child_opts: pulumi.ResourceOptions):
         # NAT Gateway
+        # TODO: Create 2nd NAT Gateway in another AZ for HA
         eip = aws.ec2.Eip(
             "networking-nat-eip",
             vpc=True,
@@ -122,3 +123,43 @@ class Routing(ComponentResource):
                     parent=private_route, providers=child_opts.providers
                 ),
             )
+
+    def _transit_gateway(
+        self, stack_root_ref: pulumi.StackReference, child_opts: pulumi.ResourceOptions
+    ):
+        self.transit_gateway = aws.ec2transitgateway.TransitGateway(
+            "central-egress-tgtw",
+            description="central-egress-tgtw",
+            auto_accept_shared_attachments="enable",
+            tags={"Name": "central-egress-tgtw"},
+            opts=child_opts,
+        )
+
+        # Share transit gateway with an entire organization
+        aws_org_arn = stack_root_ref.get_output("organization")["arn"]
+
+        ram_resource_share = aws.ram.ResourceShare(
+            "central-egress-tgtw-share",
+            allow_external_principals=False,
+            opts=pulumi.ResourceOptions(
+                parent=self.transit_gateway, providers=child_opts.providers
+            )
+        )
+
+        aws.ram.PrincipalAssociation(
+            "central-egress-tgtw-share-principal-assoc",
+            principal=aws_org_arn,
+            resource_share_arn=ram_resource_share.arn,
+            opts=pulumi.ResourceOptions(
+                parent=ram_resource_share, providers=child_opts.providers
+            )
+        )
+
+        aws.ram.ResourceAssociation(
+            "central-egress-tgtw-resource-assoc",
+            resource_arn=self.transit_gateway.arn,
+            resource_share_arn=ram_resource_share.arn,
+            opts=pulumi.ResourceOptions(
+                parent=ram_resource_share, providers=child_opts.providers
+            )
+        )
