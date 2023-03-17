@@ -125,7 +125,10 @@ class Routing(ComponentResource):
             )
 
     def _transit_gateway(
-        self, vpc: Vpc, stack_root_ref: pulumi.StackReference, child_opts: pulumi.ResourceOptions
+        self,
+        vpc: Vpc,
+        stack_root_ref: pulumi.StackReference,
+        child_opts: pulumi.ResourceOptions,
     ):
         self.transit_gateway = aws.ec2transitgateway.TransitGateway(
             "central-egress-tgtw",
@@ -135,6 +138,7 @@ class Routing(ComponentResource):
             opts=child_opts,
         )
 
+        # associate networking account with Transit Gateway
         self.central_transit_attach = aws.ec2transitgateway.VpcAttachment(
             f"{vpc.name}-transit-gateway-attachment",
             transit_gateway_id=self.transit_gateway.id,
@@ -142,6 +146,35 @@ class Routing(ComponentResource):
             subnet_ids=vpc.private_subnets,
             opts=child_opts,
             tags={"Name": vpc.name},
+        )
+
+        # Add a static route in tgtw default route table pointing all traﬃc to egress VPC.
+        # Because of this static route, Transit Gateway sends all internet traﬃc through its ENIs
+        # in the egress VPC. Once in the egress VPC, traﬃc follows the routes deﬁned in the subnet
+        #  route table where these Transit Gateway ENIs are present.
+        aws.ec2transitgateway.Route(
+            "egress-tgw-route",
+            destination_cidr_block="0.0.0.0/0",
+            transit_gateway_attachment_id=self.central_transit_attach.id,
+            transit_gateway_route_table_id=self.transit_gateway.association_default_route_table_id,
+            opts=pulumi.ResourceOptions(
+                parent=self.transit_gateway, providers=child_opts.providers
+            ),
+        )
+
+        # You add a route in subnet route tables pointing all traffic towards the respective NAT gateway
+        # in the same Availability Zone to minimize cross-Availability Zone (AZ) traffic. The NAT gateway
+        # subnet route table has internet gateway (IGW) as the next hop. For return traffic to ﬂow back,
+        # you must add a static route table entry in the NAT gateway subnet route table pointing all spoke
+        # VPC bound traffic to Transit Gateway as the next hop.
+        aws.ec2.Route(
+            "networking-internet-return-route",
+            gateway_id=self.transit_gateway.id,
+            route_table_id=self.public_route_table.id,
+            destination_cidr_block=cidrs.DEFAULT_CIDR_BLOCK,
+            opts=pulumi.ResourceOptions(
+                parent=self.public_route_table, providers=child_opts.providers
+            ),
         )
 
         # Share transit gateway with an entire organization
@@ -152,7 +185,7 @@ class Routing(ComponentResource):
             allow_external_principals=False,
             opts=pulumi.ResourceOptions(
                 parent=self.transit_gateway, providers=child_opts.providers
-            )
+            ),
         )
 
         aws.ram.PrincipalAssociation(
@@ -161,7 +194,7 @@ class Routing(ComponentResource):
             resource_share_arn=ram_resource_share.arn,
             opts=pulumi.ResourceOptions(
                 parent=ram_resource_share, providers=child_opts.providers
-            )
+            ),
         )
 
         aws.ram.ResourceAssociation(
@@ -170,5 +203,5 @@ class Routing(ComponentResource):
             resource_share_arn=ram_resource_share.arn,
             opts=pulumi.ResourceOptions(
                 parent=ram_resource_share, providers=child_opts.providers
-            )
+            ),
         )
