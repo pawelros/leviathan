@@ -12,7 +12,6 @@ class Routing(ComponentResource):
         # This definition ensures the new component resource acts like anything else in the Pulumi ecosystem when being called in code.
         child_opts = pulumi.ResourceOptions(parent=self, providers=opts.providers)
 
-        region = pulumi.Config("aws").require("region")
         org = pulumi.Config().require("org")
         stack_ref = pulumi.StackReference(f"{org}/leviathan/networking")
         transit_gateway_id = stack_ref.get_output("routing")["transit_gateway"]["id"]
@@ -40,7 +39,7 @@ class Routing(ComponentResource):
 
         for index, subnet in enumerate(vpc.private_subnets):
             aws.ec2.RouteTableAssociation(
-                f'private-route-table-association-{index}',
+                f"{vpc.name}-private-route-table-association-{index}",
                 route_table_id=private_route_table,
                 subnet_id=subnet,
                 opts=pulumi.ResourceOptions(parent=private_route_table),
@@ -56,6 +55,24 @@ class Routing(ComponentResource):
             ),
         )
 
+        self._interface_endpoints(vpc, private_route_table, child_opts, endpoints)
+
+        routing_data = {
+            "vpc": vpc.id,
+            "transit_gateway_attachment": self.central_transit_attach,
+            "transit_gateway_route": tgw_route,
+        }
+
+        pulumi.export("routing", routing_data)
+
+    def _interface_endpoints(
+        self,
+        vpc: Vpc,
+        private_route_table: aws.ec2.RouteTable,
+        opts: pulumi.ResourceOptions,
+        endpoints: List[str] = None,
+    ):
+        region = pulumi.Config("aws").require("region")
         # AWS Interface Endpoints Security Group
         if endpoints is not None:
             self.endpoint_sg = aws.ec2.SecurityGroup(
@@ -80,7 +97,7 @@ class Routing(ComponentResource):
                         ipv6_cidr_blocks=["::/0"],
                     )
                 ],
-                opts=pulumi.ResourceOptions(parent=vpc, providers=child_opts.providers),
+                opts=pulumi.ResourceOptions(parent=vpc, providers=opts.providers),
             )
 
             # AWS Interface Endpoints
@@ -93,7 +110,7 @@ class Routing(ComponentResource):
                         vpc_endpoint_type="Gateway",
                         route_table_ids=[private_route_table.id],
                         opts=pulumi.ResourceOptions(
-                            parent=vpc, providers=child_opts.providers
+                            parent=vpc, providers=opts.providers
                         ),
                     )
                 else:
@@ -106,14 +123,6 @@ class Routing(ComponentResource):
                         vpc_endpoint_type="Interface",
                         vpc_id=vpc.id,
                         opts=pulumi.ResourceOptions(
-                            parent=vpc, providers=child_opts.providers
+                            parent=vpc, providers=opts.providers
                         ),
                     )
-
-        routing_data = {
-            "vpc": vpc.id,
-            "transit_gateway_attachment": self.central_transit_attach,
-            "transit_gateway_route": tgw_route,
-        }
-
-        pulumi.export("routing", routing_data)

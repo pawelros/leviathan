@@ -169,11 +169,13 @@ class Routing(ComponentResource):
         # VPC bound traffic to Transit Gateway as the next hop.
         aws.ec2.Route(
             "networking-internet-return-route",
-            gateway_id=self.transit_gateway.id,
+            transit_gateway_id=self.transit_gateway.id,
             route_table_id=self.public_route_table.id,
             destination_cidr_block=cidrs.DEFAULT_CIDR_BLOCK,
             opts=pulumi.ResourceOptions(
-                parent=self.public_route_table, providers=child_opts.providers
+                depends_on=self.transit_gateway,
+                parent=self.public_route_table,
+                providers=child_opts.providers,
             ),
         )
 

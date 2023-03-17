@@ -64,7 +64,7 @@ class Vpc(ComponentResource):
         for az in availability_zones:
             self.private_subnets.append(
                 aws.ec2.Subnet(
-                    f"{az}-private-subnet",
+                    f"{self.name}-{az}-private-subnet",
                     assign_ipv6_address_on_creation=False,
                     availability_zone=az,
                     cidr_block=f"{cidr_prefix}.{self.private_subnet_suffixes.pop()}",
@@ -81,7 +81,7 @@ class Vpc(ComponentResource):
             if is_public:
                 self.public_subnets.append(
                     aws.ec2.Subnet(
-                        f"{az}-public-subnet",
+                        f"{self.name}-{az}-public-subnet",
                         assign_ipv6_address_on_creation=False,
                         availability_zone=az,
                         cidr_block=f"{cidr_prefix}.{self.public_subnet_suffixes.pop()}",
