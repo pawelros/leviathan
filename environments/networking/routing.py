@@ -16,7 +16,7 @@ class Routing(ComponentResource):
 
         self._internet_gateway(vpc, child_opts)
         self._nat_gateway(vpc, child_opts)
-        self._transit_gateway(stack_root_ref, child_opts)
+        self._transit_gateway(vpc, stack_root_ref, child_opts)
 
         routing_data = {
             "vpc": vpc.id,
@@ -125,7 +125,7 @@ class Routing(ComponentResource):
             )
 
     def _transit_gateway(
-        self, stack_root_ref: pulumi.StackReference, child_opts: pulumi.ResourceOptions
+        self, vpc: Vpc, stack_root_ref: pulumi.StackReference, child_opts: pulumi.ResourceOptions
     ):
         self.transit_gateway = aws.ec2transitgateway.TransitGateway(
             "central-egress-tgtw",
@@ -133,6 +133,15 @@ class Routing(ComponentResource):
             auto_accept_shared_attachments="enable",
             tags={"Name": "central-egress-tgtw"},
             opts=child_opts,
+        )
+
+        self.central_transit_attach = aws.ec2transitgateway.VpcAttachment(
+            f"{vpc.name}-transit-gateway-attachment",
+            transit_gateway_id=self.transit_gateway.id,
+            vpc_id=vpc.id,
+            subnet_ids=vpc.private_subnets,
+            opts=child_opts,
+            tags={"Name": vpc.name},
         )
 
         # Share transit gateway with an entire organization
