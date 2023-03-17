@@ -4,6 +4,7 @@ from leviathan import consts
 from leviathan.account import Account
 from leviathan.vpc import Vpc
 from leviathan.routing import Routing
+from leviathan.iam import Iam
 from leviathan.configuration import cidrs
 
 
@@ -54,7 +55,9 @@ class Environment(ComponentResource):
                 "ecs",
                 "ecs-agent",
                 "ecs-telemetry",
-            ]
+            ],
         )
+
+        Iam(name, child_opts)
 
         self.register_outputs({"account": self.account, "vpc": self.vpc})

@@ -26,6 +26,7 @@ class Routing(ComponentResource):
         }
 
         pulumi.export("routing", routing_data)
+        self.register_outputs({})
 
     def _internet_gateway(self, vpc: Vpc, child_opts: pulumi.ResourceOptions):
         # Internet gateway

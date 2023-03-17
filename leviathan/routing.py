@@ -64,6 +64,7 @@ class Routing(ComponentResource):
         }
 
         pulumi.export("routing", routing_data)
+        self.register_outputs({})
 
     def _interface_endpoints(
         self,
